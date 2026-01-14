@@ -22,6 +22,7 @@ export const getWallets = async (req: AuthRequest, res: Response) => {
 
         res.json(result);
     } catch (err) {
+        console.error('getWallets Error:', err);
         res.status(500).json({ error: 'Failed to fetch wallets' });
     }
 };

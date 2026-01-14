@@ -1,39 +1,36 @@
 import prisma from '../utils/prisma';
-import { startOfMonth, endOfMonth, addMonths, format, parseISO, isAfter } from 'date-fns';
+import { startOfMonth, endOfMonth, addMonths, format, parseISO } from 'date-fns';
+import { Prisma } from '@prisma/client';
 
 export const getOrCreateMonthlyBalance = async (walletId: string, date: Date) => {
-    const month = format(date, 'yyyy-MM');
+    // Ensure we are working with the 1st of the month
+    const monthDate = startOfMonth(date);
 
-    let ledger = await prisma.walletMonthlyBalance.findUnique({
+    let ledger = await prisma.monthlyBalance.findUnique({
         where: {
             walletId_month: {
                 walletId,
-                month,
+                month: monthDate,
             },
         },
     });
 
     if (!ledger) {
-        // If this is the very first month, opening is 0.
-        // If not, it should be the closing of previous month.
-        // However, if previous month doesn't exist, we must traverse back or assume 0 (for new wallets).
-
-        // Simplification: Try to find previous month
-        const prevMonthDate = addMonths(date, -1);
-        const prevMonthStr = format(prevMonthDate, 'yyyy-MM');
-
-        const prevLedger = await prisma.walletMonthlyBalance.findUnique({
-            where: { walletId_month: { walletId, month: prevMonthStr } }
+        // If not found, try to find previous month
+        const prevMonthDate = addMonths(monthDate, -1);
+        const prevLedger = await prisma.monthlyBalance.findUnique({
+            where: { walletId_month: { walletId, month: prevMonthDate } }
         });
 
-        const openingBalance = prevLedger ? prevLedger.closingBalance : 0;
+        const openingBalance = prevLedger ? prevLedger.closingBalance : new Prisma.Decimal(0);
 
-        ledger = await prisma.walletMonthlyBalance.create({
+        // Create new ledger with opening = closing = previous closing
+        ledger = await prisma.monthlyBalance.create({
             data: {
                 walletId,
-                month,
+                month: monthDate,
                 openingBalance,
-                closingBalance: openingBalance, // Initially closing = opening
+                closingBalance: openingBalance,
             },
         });
     }
@@ -41,63 +38,55 @@ export const getOrCreateMonthlyBalance = async (walletId: string, date: Date) =>
     return ledger;
 };
 
-// This function calculates totals for a specific month based on raw transactions
-// AND updates the ledger.
-export const recalculateMonth = async (walletId: string, month: string) => {
-    // 1. Get Opening Balance (from previous month or 0)
-    const monthDate = parseISO(`${month}-01`);
+export const recalculateMonth = async (walletId: string, _monthDate: Date) => {
+    const monthDate = startOfMonth(_monthDate);
+
+    // 1. Get Opening Balance (from previous month)
     const prevMonthDate = addMonths(monthDate, -1);
-    const prevMonthStr = format(prevMonthDate, 'yyyy-MM');
-
-    const prevLedger = await prisma.walletMonthlyBalance.findUnique({
-        where: { walletId_month: { walletId, month: prevMonthStr } }
+    const prevLedger = await prisma.monthlyBalance.findUnique({
+        where: { walletId_month: { walletId, month: prevMonthDate } }
     });
 
-    const openingBalance = prevLedger ? prevLedger.closingBalance : 0;
+    const openingBalance = prevLedger ? prevLedger.closingBalance : new Prisma.Decimal(0);
 
-    // 2. Sum Income
-    const incomes = await prisma.income.aggregate({
+    // 2. Sum Income & Expenses for this month
+    const transactions = await prisma.transaction.groupBy({
+        by: ['type'],
         where: {
             walletId,
             date: {
-                gte: startOfMonth(monthDate),
+                gte: monthDate,
                 lte: endOfMonth(monthDate)
             }
         },
         _sum: { amount: true }
     });
-    const totalIncome = incomes._sum.amount || 0;
 
-    // 3. Sum Expense
-    const expenses = await prisma.expense.aggregate({
-        where: {
-            walletId,
-            date: {
-                gte: startOfMonth(monthDate),
-                lte: endOfMonth(monthDate)
-            }
-        },
-        _sum: { amount: true }
+    let totalIncome = new Prisma.Decimal(0);
+    let totalExpense = new Prisma.Decimal(0);
+
+    transactions.forEach(t => {
+        if (t.type === 'INCOME') totalIncome = totalIncome.add(t._sum.amount || 0);
+        if (t.type === 'EXPENSE') totalExpense = totalExpense.add(t._sum.amount || 0);
+        // TRANSFER logic depends on if it's IN or OUT. 
+        // For V2, let's treat TRANSFER as simple movement. 
+        // If needed, we can split TRANSFER into TRANSFER_IN and TRANSFER_OUT in future.
+        // For now, assuming naive Income/Expense:
     });
-    const totalExpense = expenses._sum.amount || 0;
 
-    // 4. Update Ledger
-    const closingBalance = openingBalance + totalIncome - totalExpense;
+    // 3. Update Ledger
+    const closingBalance = openingBalance.add(totalIncome).sub(totalExpense);
 
-    const updatedLedger = await prisma.walletMonthlyBalance.upsert({
-        where: { walletId_month: { walletId, month } },
+    const updatedLedger = await prisma.monthlyBalance.upsert({
+        where: { walletId_month: { walletId, month: monthDate } },
         update: {
             openingBalance,
-            totalIncome,
-            totalExpense,
             closingBalance
         },
         create: {
             walletId,
-            month,
+            month: monthDate,
             openingBalance,
-            totalIncome,
-            totalExpense,
             closingBalance
         }
     });
@@ -108,30 +97,24 @@ export const recalculateMonth = async (walletId: string, month: string) => {
 // Cascades changes forward
 export const cascadeRecalculation = async (walletId: string, startFromDate: Date) => {
     let currentDate = startOfMonth(startFromDate);
-    // Safety limit: 12 months forward max for now to prevent infinite loops
+    // Safety limit: up to 24 months forward
     let monthsProcessed = 0;
 
-    while (monthsProcessed < 12) {
-        const monthStr = format(currentDate, 'yyyy-MM');
+    while (monthsProcessed < 24) {
+        // Recalculate current month
+        await recalculateMonth(walletId, currentDate);
 
-        // Check if ledger exists or needs creating (if transactions exist later?)
-        // For strictly enforced ledger, we simply recalculate.
-        // Optimization: Only continue if a ledger entry strictly exists OR if we just updated the previous month.
-        // Here, we'll try to update.
-
-        await recalculateMonth(walletId, monthStr);
-
-        // Move to next
+        // Move to next month
         currentDate = addMonths(currentDate, 1);
 
-        // Break if we are far in future and no ledger exists? 
-        // For MVP, just going 1 year forward or until no ledger found is safer.
-        const nextMonthStr = format(currentDate, 'yyyy-MM');
-        const nextLedger = await prisma.walletMonthlyBalance.findUnique({
-            where: { walletId_month: { walletId, month: nextMonthStr } }
+        // Check if next month exists. If NOT, we stop the chain, 
+        // UNLESS we want to effectively "open" future months.
+        // For now, stop if no ledger exists to prevent infinite generation.
+        const nextLedger = await prisma.monthlyBalance.findUnique({
+            where: { walletId_month: { walletId, month: currentDate } }
         });
 
-        if (!nextLedger) break; // Stop if no future chain
+        if (!nextLedger) break;
 
         monthsProcessed++;
     }

@@ -6,6 +6,8 @@ import { Register } from './pages/Register';
 
 import { Layout } from './components/Layout';
 import { Dashboard } from './pages/Dashboard';
+import { GiveTakePage } from './pages/GiveTakePage';
+import { ErrorBoundary } from './components/ErrorBoundary';
 
 const PrivateRoute = ({ children }: { children: JSX.Element }) => {
   const { isAuthenticated, loading } = useAuth();
@@ -24,9 +26,23 @@ function App() {
             path="/"
             element={
               <PrivateRoute>
-                <Layout>
-                  <Dashboard />
-                </Layout>
+                <ErrorBoundary>
+                  <Layout>
+                    <Dashboard />
+                  </Layout>
+                </ErrorBoundary>
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/give-take"
+            element={
+              <PrivateRoute>
+                <ErrorBoundary>
+                  <Layout>
+                    <GiveTakePage />
+                  </Layout>
+                </ErrorBoundary>
               </PrivateRoute>
             }
           />

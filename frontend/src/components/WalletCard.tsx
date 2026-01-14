@@ -15,7 +15,7 @@ export const WalletCard: React.FC<WalletCardProps> = ({ name, balance, type }) =
             <div className="flex justify-between items-start mb-4">
                 <div>
                     <h3 className="text-gray-400 text-sm font-medium uppercase tracking-wider">{name}</h3>
-                    <p className="text-2xl font-bold text-white mt-1">₹{balance.toFixed(2)}</p>
+                    <p className="text-2xl font-bold text-white mt-1">₹{Number(balance).toFixed(2)}</p>
                 </div>
                 <div className={`p-3 rounded-lg ${isBank ? 'bg-indigo-500/20 text-indigo-400' : 'bg-emerald-500/20 text-emerald-400'}`}>
                     <WalletIcon className="w-6 h-6" />

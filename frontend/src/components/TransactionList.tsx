@@ -23,22 +23,28 @@ export const TransactionList: React.FC<{ transactions: Transaction[] }> = ({ tra
                 {transactions.length === 0 ? (
                     <div className="p-8 text-center text-gray-400">No transactions yet</div>
                 ) : (
-                    transactions.map((t) => (
-                        <div key={t.id} className="p-4 flex items-center justify-between hover:bg-slate-700/50 transition-colors">
-                            <div className="flex items-center gap-4">
-                                <div className={`p-2 rounded-full ${t.type === 'INCOME' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
-                                    {t.type === 'INCOME' ? <ArrowDownLeft className="w-5 h-5" /> : <ArrowUpRight className="w-5 h-5" />}
+                    transactions.map((t) => {
+                        const dateObj = t.date ? new Date(t.date) : new Date();
+                        const isValidDate = !isNaN(dateObj.getTime());
+                        const displayDate = isValidDate ? format(dateObj, 'MMM d, yyyy') : 'Invalid Date';
+
+                        return (
+                            <div key={t.id} className="p-4 flex items-center justify-between hover:bg-slate-700/50 transition-colors">
+                                <div className="flex items-center gap-4">
+                                    <div className={`p-2 rounded-full ${t.type === 'INCOME' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
+                                        {t.type === 'INCOME' ? <ArrowDownLeft className="w-5 h-5" /> : <ArrowUpRight className="w-5 h-5" />}
+                                    </div>
+                                    <div>
+                                        <p className="font-medium text-white">{t.source || t.category || 'Uncategorized'}</p>
+                                        <p className="text-sm text-gray-400">{displayDate} • {t.wallet?.name || 'Unknown Wallet'}</p>
+                                    </div>
                                 </div>
-                                <div>
-                                    <p className="font-medium text-white">{t.source || t.category}</p>
-                                    <p className="text-sm text-gray-400">{format(new Date(t.date), 'MMM d, yyyy')} • {t.wallet.name}</p>
-                                </div>
+                                <span className={`font-bold ${t.type === 'INCOME' ? 'text-green-400' : 'text-red-400'}`}>
+                                    {t.type === 'INCOME' ? '+' : '-'}₹{Number(t.amount).toFixed(2)}
+                                </span>
                             </div>
-                            <span className={`font-bold ${t.type === 'INCOME' ? 'text-green-400' : 'text-red-400'}`}>
-                                {t.type === 'INCOME' ? '+' : '-'}₹{t.amount.toFixed(2)}
-                            </span>
-                        </div>
-                    ))
+                        );
+                    })
                 )}
             </div>
         </div>

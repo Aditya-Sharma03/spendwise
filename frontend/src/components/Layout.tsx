@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { LogOut, PieChart, Wallet, Menu, X } from 'lucide-react';
+import { LogOut, PieChart, Wallet, Menu, X, ArrowRight } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 
 export const Layout = ({ children }: { children: React.ReactNode }) => {
@@ -26,6 +26,10 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
                     <Link to="/" className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${location.pathname === '/' ? 'bg-blue-600/10 text-blue-400' : 'hover:bg-slate-700 text-gray-400 hover:text-white'}`}>
                         <PieChart className="w-5 h-5" />
                         <span className="font-medium">Dashboard</span>
+                    </Link>
+                    <Link to="/give-take" className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${location.pathname === '/give-take' ? 'bg-blue-600/10 text-blue-400' : 'hover:bg-slate-700 text-gray-400 hover:text-white'}`}>
+                        <ArrowRight className="w-5 h-5" />
+                        <span className="font-medium">Give & Take</span>
                     </Link>
                     {/* Future links: Budget, Reports, Settings */}
                 </nav>
@@ -60,7 +64,8 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
             {/* Mobile Menu */}
             {mobileMenuOpen && (
                 <div className="md:hidden absolute top-16 left-0 w-full bg-slate-800 border-b border-slate-700 z-30 p-4 space-y-2 shadow-xl">
-                    <Link to="/" className="block px-4 py-3 rounded-lg bg-blue-600/10 text-blue-400 font-medium" onClick={() => setMobileMenuOpen(false)}>Dashboard</Link>
+                    <Link to="/" className={`block px-4 py-3 rounded-lg font-medium ${location.pathname === '/' ? 'bg-blue-600/10 text-blue-400' : 'text-gray-400'}`} onClick={() => setMobileMenuOpen(false)}>Dashboard</Link>
+                    <Link to="/give-take" className={`block px-4 py-3 rounded-lg font-medium ${location.pathname === '/give-take' ? 'bg-blue-600/10 text-blue-400' : 'text-gray-400'}`} onClick={() => setMobileMenuOpen(false)}>Give & Take</Link>
                     <button onClick={logout} className="block w-full text-left px-4 py-3 rounded-lg text-red-400 hover:bg-red-500/10 font-medium">Logout</button>
                 </div>
             )}

@@ -30,9 +30,10 @@ const EXPENSE_CATEGORIES = [
 ];
 
 export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({ isOpen, onClose, onSuccess, wallets }) => {
-    const [type, setType] = useState<'INCOME' | 'EXPENSE'>('EXPENSE');
+    const [type, setType] = useState<'INCOME' | 'EXPENSE' | 'TRANSFER'>('EXPENSE');
     const [amount, setAmount] = useState('');
     const [walletId, setWalletId] = useState('');
+    const [toWalletId, setToWalletId] = useState(''); // For transfers
     const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
 
     // Selection from Dropdown
@@ -40,8 +41,20 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({ isOpen
     // Custom input if Other is selected
     const [customCategory, setCustomCategory] = useState('');
 
-    const [notes, setNotes] = useState('');
+    const [description, setDescription] = useState('');
     const [loading, setLoading] = useState(false);
+
+    React.useEffect(() => {
+        if (isOpen && wallets.length > 0) {
+            const defaultWallet = wallets.find(w => w.name === 'Bank' || w.type === 'BANK');
+            if (defaultWallet) {
+                setWalletId(defaultWallet.id);
+            } else {
+                // Fallback to first wallet if Bank not found
+                setWalletId(wallets[0].id);
+            }
+        }
+    }, [isOpen, wallets]);
 
     if (!isOpen) return null;
 
@@ -49,36 +62,41 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({ isOpen
         e.preventDefault();
         setLoading(true);
 
-        // Final value to send
         const finalCategory = selectedCategory === 'Other' && customCategory.trim()
             ? customCategory
             : selectedCategory;
 
         try {
-            const payload = {
-                walletId,
-                amount,
-                date,
-                notes,
-                // Dynamic field key based on type
-                [type === 'INCOME' ? 'source' : 'category']: finalCategory
-            };
-
-            if (type === 'INCOME') {
-                await api.post('/transactions/income', payload);
+            if (type === 'TRANSFER') {
+                await api.post('/transactions/transfer', {
+                    fromWalletId: walletId,
+                    toWalletId,
+                    amount,
+                    date,
+                    description
+                });
             } else {
-                await api.post('/transactions/expense', payload);
+                await api.post('/transactions', {
+                    walletId,
+                    amount,
+                    type,
+                    date,
+                    category: finalCategory,
+                    description // Using description instead of notes to match backend
+                });
             }
+
             onSuccess();
             onClose();
             // Reset form
             setAmount('');
             setSelectedCategory('');
             setCustomCategory('');
-            setNotes('');
+            setDescription('');
+            setToWalletId('');
         } catch (err) {
             console.error(err);
-            alert('Failed to add transaction');
+            alert('Failed to save transaction');
         } finally {
             setLoading(false);
         }
@@ -112,10 +130,20 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({ isOpen
                         >
                             Expense
                         </button>
+                        <button
+                            type="button"
+                            className={`flex-1 py-2 rounded-md font-medium transition-colors ${type === 'TRANSFER' ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-white'}`}
+                            onClick={() => { setType('TRANSFER'); setSelectedCategory(''); setCustomCategory(''); }}
+                        >
+                            Transfer
+                        </button>
                     </div>
 
+                    {/* From Wallet (Common) */}
                     <div>
-                        <label className="text-sm font-medium text-gray-300 mb-1 block">Wallet</label>
+                        <label className="text-sm font-medium text-gray-300 mb-1 block">
+                            {type === 'TRANSFER' ? 'From Wallet' : 'Wallet'}
+                        </label>
                         <select
                             value={walletId}
                             onChange={(e) => setWalletId(e.target.value)}
@@ -128,6 +156,24 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({ isOpen
                             ))}
                         </select>
                     </div>
+
+                    {/* To Wallet (Transfer Only) */}
+                    {type === 'TRANSFER' && (
+                        <div>
+                            <label className="text-sm font-medium text-gray-300 mb-1 block">To Wallet</label>
+                            <select
+                                value={toWalletId}
+                                onChange={(e) => setToWalletId(e.target.value)}
+                                required
+                                className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500"
+                            >
+                                <option value="">Select Destination Wallet</option>
+                                {wallets.filter(w => w.id !== walletId).map(w => (
+                                    <option key={w.id} value={w.id}>{w.name} (₹{w.currentBalance})</option>
+                                ))}
+                            </select>
+                        </div>
+                    )}
 
                     <Input
                         label="Amount"
@@ -146,24 +192,26 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({ isOpen
                         required
                     />
 
-                    <div>
-                        <label className="text-sm font-medium text-gray-300 mb-1 block">
-                            {type === 'INCOME' ? 'Source' : 'Category'}
-                        </label>
-                        <select
-                            value={selectedCategory}
-                            onChange={(e) => setSelectedCategory(e.target.value)}
-                            required
-                            className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500"
-                        >
-                            <option value="">Select {type === 'INCOME' ? 'Source' : 'Category'}</option>
-                            {options.map(opt => (
-                                <option key={opt} value={opt}>{opt}</option>
-                            ))}
-                        </select>
-                    </div>
+                    {type !== 'TRANSFER' && (
+                        <div>
+                            <label className="text-sm font-medium text-gray-300 mb-1 block">
+                                {type === 'INCOME' ? 'Source' : 'Category'}
+                            </label>
+                            <select
+                                value={selectedCategory}
+                                onChange={(e) => setSelectedCategory(e.target.value)}
+                                required
+                                className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500"
+                            >
+                                <option value="">Select {type === 'INCOME' ? 'Source' : 'Category'}</option>
+                                {options.map(opt => (
+                                    <option key={opt} value={opt}>{opt}</option>
+                                ))}
+                            </select>
+                        </div>
+                    )}
 
-                    {selectedCategory === 'Other' && (
+                    {type !== 'TRANSFER' && selectedCategory === 'Other' && (
                         <Input
                             label="Specify (Optional)"
                             value={customCategory}
@@ -173,12 +221,16 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({ isOpen
                     )}
 
                     <Input
-                        label="Notes (Optional)"
-                        value={notes}
-                        onChange={(e) => setNotes(e.target.value)}
+                        label="Description (Optional)"
+                        value={description}
+                        onChange={(e) => setDescription(e.target.value)}
                     />
 
-                    <Button type="submit" className={`w-full ${type === 'INCOME' ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'}`} disabled={loading}>
+                    <Button
+                        type="submit"
+                        className={`w-full ${type === 'INCOME' ? 'bg-green-600 hover:bg-green-700' : type === 'EXPENSE' ? 'bg-red-600 hover:bg-red-700' : 'bg-blue-600 hover:bg-blue-700'}`}
+                        disabled={loading}
+                    >
                         {loading ? 'Adding...' : 'Add Transaction'}
                     </Button>
                 </form>

@@ -4,6 +4,8 @@ import dotenv from 'dotenv';
 import authRoutes from './routes/auth.routes';
 import walletRoutes from './routes/wallet.routes';
 import transactionRoutes from './routes/transaction.routes';
+import insightsRoutes from './routes/insights.routes';
+import dueRoutes from './routes/due.routes';
 
 dotenv.config();
 
@@ -19,6 +21,9 @@ app.get('/', (req, res) => {
 app.use('/auth', authRoutes);
 app.use('/wallets', walletRoutes);
 app.use('/transactions', transactionRoutes);
+app.use('/insights', insightsRoutes);
+app.use('/due', dueRoutes);
+
 
 const PORT = process.env.PORT || 4000;
 

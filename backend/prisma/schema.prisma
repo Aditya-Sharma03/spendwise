@@ -3,7 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -12,76 +12,93 @@ model User {
   email        String   @unique
   passwordHash String
   createdAt    DateTime @default(now())
-  wallets      Wallet[]
-  incomes      Income[]
-  expenses     Expense[]
-  transfers    WalletTransfer[]
+  updatedAt    DateTime @updatedAt
+
+  wallets          Wallet[]
+  dueTransactions  DueTransaction[]
+}
+
+enum WalletType {
+  CASH
+  BANK
+  CREDIT
 }
 
 model Wallet {
-  id             String   @id @default(uuid())
-  userId         String
-  name           String   
-  type           String   
-  currency       String   @default("USD")
-  createdAt      DateTime @default(now())
-  user           User     @relation(fields: [userId], references: [id])
-  monthlyBalances WalletMonthlyBalance[]
-  incomes        Income[]
-  expenses       Expense[]
-  transfersSent      WalletTransfer[] @relation("sourceWallet")
-  transfersReceived  WalletTransfer[] @relation("targetWallet")
+  id        String     @id @default(uuid())
+  userId    String
+  name      String
+  type      WalletType
+  currency  String     @default("USD")
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions    Transaction[]
+  monthlyBalances MonthlyBalance[]
+  dueTransactions DueTransaction[]
 }
 
-model WalletMonthlyBalance {
+enum TransactionType {
+  INCOME
+  EXPENSE
+  TRANSFER
+}
+
+model Transaction {
+  id          String          @id @default(uuid())
+  walletId    String
+  amount      Decimal
+  type        TransactionType
+  date        DateTime
+  category    String?
+  description String?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  wallet Wallet @relation(fields: [walletId], references: [id], onDelete: Cascade)
+
+  @@index([walletId, date])
+}
+
+model MonthlyBalance {
   id             String   @id @default(uuid())
   walletId       String
-  month          String   
-  openingBalance Float    @default(0.0)
-  totalIncome    Float    @default(0.0)
-  totalExpense   Float    @default(0.0)
-  closingBalance Float    @default(0.0)
-  isClosed       Boolean  @default(false)
-  wallet         Wallet   @relation(fields: [walletId], references: [id])
+  month          DateTime // First day of the month
+  openingBalance Decimal
+  closingBalance Decimal
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  wallet Wallet @relation(fields: [walletId], references: [id], onDelete: Cascade)
+
   @@unique([walletId, month])
 }
 
-model Income {
-  id          String   @id @default(uuid())
-  userId      String
-  walletId    String
-  amount      Float
-  date        DateTime
-  source      String   
-  notes       String?
-  createdAt   DateTime @default(now())
-  user        User     @relation(fields: [userId], references: [id])
-  wallet      Wallet   @relation(fields: [walletId], references: [id])
+enum DueType {
+  GIVE
+  TAKE
 }
 
-model Expense {
-  id          String   @id @default(uuid())
-  userId      String
-  walletId    String
-  amount      Float
-  date        DateTime
-  category    String
-  notes       String?
-  createdAt   DateTime @default(now())
-  user        User     @relation(fields: [userId], references: [id])
-  wallet      Wallet   @relation(fields: [walletId], references: [id])
+enum DueStatus {
+  PENDING
+  SETTLED
 }
 
-model WalletTransfer {
-  id             String   @id @default(uuid())
-  userId         String
-  fromWalletId   String
-  toWalletId     String
-  amount         Float
-  date           DateTime
-  notes          String?
-  createdAt      DateTime @default(now())
-  user           User     @relation(fields: [userId], references: [id])
-  fromWallet     Wallet   @relation("sourceWallet", fields: [fromWalletId], references: [id])
-  toWallet       Wallet   @relation("targetWallet", fields: [toWalletId], references: [id])
+model DueTransaction {
+  id          String    @id @default(uuid())
+  userId      String
+  walletId    String?
+  amount      Decimal
+  type        DueType
+  status      DueStatus @default(PENDING)
+  personName  String
+  reason      String
+  dueDate     DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  settledAt   DateTime?
+
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  wallet Wallet? @relation(fields: [walletId], references: [id])
 }

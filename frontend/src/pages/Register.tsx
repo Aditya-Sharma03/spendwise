@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
 import { Button } from '../components/Button';
 import { Input } from '../components/Input';
@@ -8,14 +9,21 @@ import { Wallet } from 'lucide-react';
 export const Register = () => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
-    const navigate = useNavigate();
     const [error, setError] = useState('');
+    const { login } = useAuth();
+    const navigate = useNavigate();
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
-            await api.post('/auth/register', { email, password });
-            navigate('/login');
+            const res = await api.post('/auth/register', { email, password });
+            // Auto login after register
+            if (res.data.token) {
+                login(res.data.token);
+                navigate('/');
+            } else {
+                navigate('/login');
+            }
         } catch (err: any) {
             setError(err.response?.data?.error || 'Registration failed');
         }

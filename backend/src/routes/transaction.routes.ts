@@ -1,12 +1,13 @@
 import express from 'express';
-import { addIncome, addExpense, getTransactions } from '../controllers/transaction.controller';
+import { createTransaction, getTransactions, transferFunds } from '../controllers/transaction.controller';
 import { authenticateToken } from '../middleware/auth';
 
 const router = express.Router();
 
 router.use(authenticateToken);
+
 router.get('/', getTransactions);
-router.post('/income', addIncome);
-router.post('/expense', addExpense);
+router.post('/', createTransaction); // Unified creation
+router.post('/transfer', transferFunds); // Transfer logic
 
 export default router;
