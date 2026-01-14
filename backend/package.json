@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "build": "npx tsc && npx prisma generate && npx prisma migrate deploy",
+    "build": "npx prisma generate && npx prisma migrate deploy",
     "start": "node dist/app.js",
     "dev": "tsx src/app.ts",
     "test": "echo \"Error: no test specified\" && exit 1"
