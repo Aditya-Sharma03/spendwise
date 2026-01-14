@@ -7,8 +7,8 @@ interface Transaction {
 }
 
 export const IncomeVsExpenseChart: React.FC<{ transactions: Transaction[] }> = ({ transactions }) => {
-    const income = transactions.filter(t => t.type === 'INCOME').reduce((acc, t) => acc + t.amount, 0);
-    const expense = transactions.filter(t => t.type === 'EXPENSE').reduce((acc, t) => acc + t.amount, 0);
+    const income = transactions.filter(t => t.type === 'INCOME').reduce((acc, t) => acc + Number(t.amount), 0);
+    const expense = transactions.filter(t => t.type === 'EXPENSE').reduce((acc, t) => acc + Number(t.amount), 0);
 
     const data = [
         { name: 'Income', amount: income },
@@ -23,7 +23,7 @@ export const IncomeVsExpenseChart: React.FC<{ transactions: Transaction[] }> = (
                     <XAxis dataKey="name" stroke="#94a3b8" />
                     <YAxis stroke="#94a3b8" tickFormatter={(val) => `₹${val}`} />
                     <Tooltip
-                        formatter={(value: number) => `₹${value.toFixed(2)}`}
+                        formatter={(value: any) => `₹${Number(value).toFixed(2)}`}
                         cursor={{ fill: '#334155', opacity: 0.2 }}
                         contentStyle={{ backgroundColor: '#1e293b', borderColor: '#334155', color: '#fff' }}
                     />

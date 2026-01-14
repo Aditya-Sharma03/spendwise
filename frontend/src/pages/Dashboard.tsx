@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import api from '../services/api';
 import { WalletCard } from '../components/WalletCard';
 import { TransactionList } from '../components/TransactionList';
@@ -143,21 +143,21 @@ export const Dashboard = () => {
                             <div className="flex justify-between text-sm">
                                 <span className="text-gray-400">Income</span>
                                 <span className="text-green-400 font-medium">
-                                    +₹{safeTransactions.filter((t: any) => t.type === 'INCOME').reduce((acc: number, t: any) => acc + t.amount, 0).toFixed(2)}
+                                    +₹{safeTransactions.filter((t: any) => t.type === 'INCOME').reduce((acc: number, t: any) => acc + Number(t.amount), 0).toFixed(2)}
                                 </span>
                             </div>
                             <div className="flex justify-between text-sm">
                                 <span className="text-gray-400">Expenses</span>
                                 <span className="text-red-400 font-medium">
-                                    -₹{safeTransactions.filter((t: any) => t.type === 'EXPENSE').reduce((acc: number, t: any) => acc + t.amount, 0).toFixed(2)}
+                                    -₹{safeTransactions.filter((t: any) => t.type === 'EXPENSE').reduce((acc: number, t: any) => acc + Number(t.amount), 0).toFixed(2)}
                                 </span>
                             </div>
                             <div className="border-t border-slate-700 pt-2 flex justify-between font-bold">
                                 <span className="text-gray-300">Net</span>
                                 <span className="text-white">
                                     ₹{(
-                                        safeTransactions.filter((t: any) => t.type === 'INCOME').reduce((acc: number, t: any) => acc + t.amount, 0) -
-                                        safeTransactions.filter((t: any) => t.type === 'EXPENSE').reduce((acc: number, t: any) => acc + t.amount, 0)
+                                        safeTransactions.filter((t: any) => t.type === 'INCOME').reduce((acc: number, t: any) => acc + Number(t.amount), 0) -
+                                        safeTransactions.filter((t: any) => t.type === 'EXPENSE').reduce((acc: number, t: any) => acc + Number(t.amount), 0)
                                     ).toFixed(2)}
                                 </span>
                             </div>

@@ -17,7 +17,7 @@ export const SpendingPieChart: React.FC<{ transactions: Transaction[] }> = ({ tr
 
     expenses.forEach(t => {
         const cat = t.category || 'Other';
-        categoryTotals[cat] = (categoryTotals[cat] || 0) + t.amount;
+        categoryTotals[cat] = (categoryTotals[cat] || 0) + Number(t.amount);
     });
 
     const data = Object.keys(categoryTotals).map(cat => ({
@@ -47,12 +47,12 @@ export const SpendingPieChart: React.FC<{ transactions: Transaction[] }> = ({ tr
                         fill="#8884d8"
                         dataKey="value"
                     >
-                        {data.map((entry, index) => (
+                        {data.map((_, index) => (
                             <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                         ))}
                     </Pie>
                     <Tooltip
-                        formatter={(value: number) => `₹${value.toFixed(2)}`}
+                        formatter={(value: any) => `₹${Number(value).toFixed(2)}`}
                         contentStyle={{ backgroundColor: '#1e293b', borderColor: '#334155', color: '#fff' }}
                     />
                     <Legend layout="vertical" verticalAlign="middle" align="right" wrapperStyle={{ fontSize: '12px' }} />

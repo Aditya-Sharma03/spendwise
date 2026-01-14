@@ -1,5 +1,5 @@
 import React from 'react';
-import { Wallet as WalletIcon, ArrowUpCircle, ArrowDownCircle } from 'lucide-react';
+import { Wallet as WalletIcon } from 'lucide-react';
 
 interface WalletCardProps {
     name: string;
