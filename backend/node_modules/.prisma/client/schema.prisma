@@ -1,0 +1,87 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+  wallets      Wallet[]
+  incomes      Income[]
+  expenses     Expense[]
+  transfers    WalletTransfer[]
+}
+
+model Wallet {
+  id             String   @id @default(uuid())
+  userId         String
+  name           String   
+  type           String   
+  currency       String   @default("USD")
+  createdAt      DateTime @default(now())
+  user           User     @relation(fields: [userId], references: [id])
+  monthlyBalances WalletMonthlyBalance[]
+  incomes        Income[]
+  expenses       Expense[]
+  transfersSent      WalletTransfer[] @relation("sourceWallet")
+  transfersReceived  WalletTransfer[] @relation("targetWallet")
+}
+
+model WalletMonthlyBalance {
+  id             String   @id @default(uuid())
+  walletId       String
+  month          String   
+  openingBalance Float    @default(0.0)
+  totalIncome    Float    @default(0.0)
+  totalExpense   Float    @default(0.0)
+  closingBalance Float    @default(0.0)
+  isClosed       Boolean  @default(false)
+  wallet         Wallet   @relation(fields: [walletId], references: [id])
+  @@unique([walletId, month])
+}
+
+model Income {
+  id          String   @id @default(uuid())
+  userId      String
+  walletId    String
+  amount      Float
+  date        DateTime
+  source      String   
+  notes       String?
+  createdAt   DateTime @default(now())
+  user        User     @relation(fields: [userId], references: [id])
+  wallet      Wallet   @relation(fields: [walletId], references: [id])
+}
+
+model Expense {
+  id          String   @id @default(uuid())
+  userId      String
+  walletId    String
+  amount      Float
+  date        DateTime
+  category    String
+  notes       String?
+  createdAt   DateTime @default(now())
+  user        User     @relation(fields: [userId], references: [id])
+  wallet      Wallet   @relation(fields: [walletId], references: [id])
+}
+
+model WalletTransfer {
+  id             String   @id @default(uuid())
+  userId         String
+  fromWalletId   String
+  toWalletId     String
+  amount         Float
+  date           DateTime
+  notes          String?
+  createdAt      DateTime @default(now())
+  user           User     @relation(fields: [userId], references: [id])
+  fromWallet     Wallet   @relation("sourceWallet", fields: [fromWalletId], references: [id])
+  toWallet       Wallet   @relation("targetWallet", fields: [toWalletId], references: [id])
+}
